@@ -2,7 +2,8 @@
 
 import socket
 import re
-import os
+import os, signal
+from datetime import datetime
 from sys import exit
 from time import sleep
 
@@ -18,11 +19,16 @@ er = "[Error] "
 
 sunnypot = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
+# _______ Redundancy ________
+
 # # _______ Classes ________
 # class config:
 #     ip =
 #     port =
 # _______ Functions _________
+
+def keyboard_int:
+    
 
 def get_host_ip():
     try:
@@ -43,17 +49,25 @@ def get_host_ip():
 def format_header(header):
     pass
 
+def logging():
+    if os.path.isdir("logs"):
+        pass
+    else:
+        os.mkdir("logs")
+
 def build_config():
     print("Test\n")
     pass
 
 def start_pot(ip, port):
-    try:
-        sunnypot.bind((ip,port))
-    except OSError:
-        print(er + "Address still in use, waiting for connection to die...")
-        sleep(10)
-        exit(sp + "Connection dead. Exiting...")
+    # try:
+    #     sunnypot.bind((ip,port))
+    # except OSError:
+    #     print(er + "Address still in use, waiting for connection to die...")
+    #     sleep(10)
+    #     exit(sp + "Connection dead. Exiting...")
+
+    logging()
     sunnypot.listen(5)
 
     while True:
@@ -71,10 +85,22 @@ if (quick_config):
     sleep(5)
     config_vars()
 else:
+    #print(datetime.now().strftime('%H:%M'))
     mode = input(sp + "Select Mode (1 = Single-Use, 2 = Config Builder) >> ")
+
     if (mode == "1"):
         pot_ip = get_host_ip()
-        pot_port = 80
+
+        try:
+            pot_port = int(input(sp + "Enter Port >> "))
+        except ValueError:
+            exit(er + "Not a port! Exiting...")
+        finally:
+            if (0 < pot_port <= 65535):
+                pass
+            else:
+                exit(er + "Port must be between 1 and 65,535. Exiting...")
+        #sunnypot.bind((pot_ip, pot_port))
         start_pot(pot_ip, pot_port)
     elif (mode == "2"):
         build_config()

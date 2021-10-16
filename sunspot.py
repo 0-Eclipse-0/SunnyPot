@@ -4,7 +4,7 @@ import socket
 import re
 import os, signal
 from datetime import datetime
-from sys import exit
+from sys import exit, stdout
 from time import sleep
 
 # _______ Variables _________
@@ -19,16 +19,22 @@ er = "[Error] "
 
 sunnypot = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-# _______ Redundancy ________
+# _______ Occurence Handling ________
+
+def signal_handler(signal, frame):
+    sunnypot.close()
+    if (os.path.exists("logs/ip_log")):
+        os.remove(os.getcwd() +"/logs/ip_log")
+    exit("\n" + sp + "Closing socket and exiting...")
+
+signal.signal(signal.SIGINT, signal_handler)
 
 # # _______ Classes ________
 # class config:
 #     ip =
 #     port =
-# _______ Functions _________
 
-def keyboard_int:
-    
+# _______ Functions _________
 
 def get_host_ip():
     try:
@@ -42,8 +48,8 @@ def get_host_ip():
         else:
             pass # Pass
     except Exception:
-        sys.exit(er + "Error resolving hostname...")
-        sunnypot.close
+        exit(er + "Error resolving hostname...")
+        sunnypot.close()
     return host_ip
 
 def format_header(header):
@@ -59,13 +65,21 @@ def build_config():
     print("Test\n")
     pass
 
+def detection():  # Detects DDoS/DoS or Brute force attacks
+    pass
+
 def start_pot(ip, port):
-    # try:
-    #     sunnypot.bind((ip,port))
-    # except OSError:
-    #     print(er + "Address still in use, waiting for connection to die...")
-    #     sleep(10)
-    #     exit(sp + "Connection dead. Exiting...")
+    try:
+        sunnypot.bind((ip,port))
+    except OSError as e:
+        if '[Errno 48]' in str(e):
+            print(er + "Address still in use, waiting for connection to die...")
+            sleep(10)
+            exit(sp + "Connection dead. Exiting...")
+        elif '[Errno 49]' in str(e):
+            exit(er + "Cannot assign specific address. Exiting...")
+        else:
+            exit(er + "Fatal Error")
 
     logging()
     sunnypot.listen(5)
@@ -100,7 +114,7 @@ else:
                 pass
             else:
                 exit(er + "Port must be between 1 and 65,535. Exiting...")
-        #sunnypot.bind((pot_ip, pot_port))
+
         start_pot(pot_ip, pot_port)
     elif (mode == "2"):
         build_config()

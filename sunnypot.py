@@ -71,33 +71,11 @@ def get_host_ip(is_conf):
     host_ip = socket.gethostbyname(socket.gethostname())
     if host_ip == "127.0.0.1":
         host_ip = input(sp + "Could not resolve IP, enter IP manually: ") # Can't open honeypot
-            # if re.match(r"^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$", host_ip): # Valid input ip
-            #     pass
-            # else: # Invalid input ip
-            #     remove_conf(is_conf)
-            #     exit(er + "Invalid IP Address. Exiting...")
         check_host(host_ip, is_conf)
-    else:
-        pass # Pass
-    # except Exception:
-    #     remove_conf(is_conf)
-    #     exit(er + "Error resolving hostname...")
     return host_ip
 
 def get_host_port(is_conf):
     port = input(sp + "Enter Port >> ")
-
-    # try:
-    #     port = int(port) # Check if port is integer
-    # except ValueError:
-    #     remove_conf(is_conf)
-    #     exit(er + "Port is not a valid integer! Exitting...")
-    # finally:
-    #     if (1 <= port <= 65535):
-    #         pass
-    #     else:
-    #         remove_conf(is_conf)
-    #         exit(er + "Port out of bounds! Exiting...")
     check_port(port, is_conf)
     return int(port)
 

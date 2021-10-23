@@ -9,12 +9,27 @@ from time import sleep
 
 # _______ Variables _________
 
+banner = """
+  ██████  █    ██  ███▄    █  ███▄    █ ▓██   ██▓ ██▓███   ▒█████  ▄▄▄█████▓
+▒██    ▒  ██  ▓██▒ ██ ▀█   █  ██ ▀█   █  ▒██  ██▒▓██░  ██▒▒██▒  ██▒▓  ██▒ ▓▒
+░ ▓██▄   ▓██  ▒██░▓██  ▀█ ██▒▓██  ▀█ ██▒  ▒██ ██░▓██░ ██▓▒▒██░  ██▒▒ ▓██░ ▒░
+  ▒   ██▒▓▓█  ░██░▓██▒  ▐▌██▒▓██▒  ▐▌██▒  ░ ▐██▓░▒██▄█▓▒ ▒▒██   ██░░ ▓██▓ ░
+▒██████▒▒▒▒█████▓ ▒██░   ▓██░▒██░   ▓██░  ░ ██▒▓░▒██▒ ░  ░░ ████▓▒░  ▒██▒ ░
+▒ ▒▓▒ ▒ ░░▒▓▒ ▒ ▒ ░ ▒░   ▒ ▒ ░ ▒░   ▒ ▒    ██▒▒▒ ▒▓▒░ ░  ░░ ▒░▒░▒░   ▒ ░░
+░ ░▒  ░ ░░░▒░ ░ ░ ░ ░░   ░ ▒░░ ░░   ░ ▒░ ▓██ ░▒░ ░▒ ░       ░ ▒ ▒░     ░
+░  ░  ░   ░░░ ░ ░    ░   ░ ░    ░   ░ ░  ▒ ▒ ░░  ░░       ░ ░ ░ ▒    ░
+      ░     ░              ░          ░  ░ ░                  ░ ░
+                           [Made by 0-Eclipse-0]
+"""
+
 sp, er = "[SunnyPot] ", "[Error] "
 
-log_name = datetime.now().strftime("[%d/%m/%y][%H:%S].log")
+log_name = os.getcwd() + datetime.now().strftime("/logs/[%m-%d-%y][%H:%M].log")
+cur_time = datetime.now().strftime("[%H:%M:%S]")
+cur_date = datetime.now().strftime("[%m-%d-%y]")
 
 ip_list = []
-blacklist = []
+ip_blacklist = []
 
         # Hex for fake html message (for http/https)
 faux_site = bytearray.fromhex("""
@@ -25,14 +40,12 @@ sunnypot = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 # _______ Occurence Handling ________
 
 def signal_handler(signal, frame):
-    sunnypot.close()
-    if (os.path.exists("logs/ip_list")):
-        os.remove(os.getcwd() +"/logs/ip_list")
+    # if (os.path.getsize(log_name) == 0):
+    #     os.remove(log_name)
+    print("\033]2;\007")
     exit("\n" + sp + "Closing socket and exiting...")
 
 signal.signal(signal.SIGINT, signal_handler)
-
-# _______ Logging ________
 
 # _______ Functions _________
 
@@ -82,12 +95,6 @@ def get_host_port(is_conf):
 # def format_header(header):
 #     pass
 
-def logging():
-    if os.path.isdir("logs"):
-        pass
-    else:
-        os.mkdir("logs")
-
 def build_config():
     with open("config", "w") as config:
         config.write(get_host_ip(True) + "\n")
@@ -116,6 +123,15 @@ def detection(ip):  # Detects DoS or Brute force attacks
             count += 1
     return count
 
+def log_start(host,ip):
+    start_msg = """
+    Details:
+    \tServer: %s:%i
+    \tDate: %s
+    \tTime: %s
+    """ % (host,ip,cur_date,cur_time)
+    return start_msg
+
 def start_pot(ip, port, is_conf):
     sunnypot.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
@@ -128,8 +144,10 @@ def start_pot(ip, port, is_conf):
         else:
             exit(er + "Cannot assign specific address. Exiting...")
 
-    logging()
-    sunnypot.listen(5)
+    print("\033]2;[Sunny Pot] on %s:%i\007" % (ip,port));
+    sunnypot.listen(3)
+
+    if os.path.exists("logs") != True: os.mkdir("logs")
 
     if port == (80 or 443):  # Send html
         msg = faux_site
@@ -137,27 +155,37 @@ def start_pot(ip, port, is_conf):
         msg = ("[%s] Access Denied: Insufficient permission to connect to %s:%i\n" % (str(datetime.now().strftime('%H:%M')), ip, port)).encode("utf-8")
 
     # Accept connections
-    while True:
-        sleep(1)
+    with open(log_name, "w") as lf:
+        lf.write(banner + log_start(ip,port))
+        print("\033[F" + sp + "HoneyPot started on %s:%i at %s" % (ip,port,cur_time) + "\n")
 
-        attacker, (attacker_ip, attacker_port) = sunnypot.accept()
+        while True:
+            sleep(1)
 
-        if attacker_ip in blacklist:
-            sleep(60)
-            attacker.close()
-        elif detection(attacker_ip) > 10:     # User is up to something fishy
-            print("-"*6,"Possible flood from [%s]" % attacker_ip, "-"*6)
-            print("No longer sending data to attacker to mitigate potential DoS\n")
-            blacklist.append(attacker_ip)
-            attacker.close()
-        else:
-            print("-"*6, "Intrusion Detected", "-"*6, "\a")
-            print("Client: %s:%s\n" % (attacker_ip, attacker_port))
-            attacker.send(msg)
-            ip_list.append(attacker_ip)
-            attacker.close()
+            attacker, (attacker_ip, attacker_port) = sunnypot.accept()
+
+            if attacker_ip in ip_blacklist:
+                bl_msg = "Blacklisted IP (%s) attempted to connect" % attacker_ip + "\n"
+                lf.write("\n" + bl_msg + "Date/Time: %s\n" % (datetime.now().strftime("[%m-%d-%y] @ [%H:%M:%S]")))
+                sleep(3)
+                attacker.close()
+            elif detection(attacker_ip) > 10:     # User is up to something fishy
+                fld_msg = "-"*6 + "Possible flood from [%s]" % attacker_ip + "-"*6 + "\nNo longer sending data to attacker to mitigate potential DoS\n"
+                print(fld_msg + "Date/Time: %s\n" % (datetime.now().strftime("[%m-%d-%y] @ [%H:%M:%S]")))
+                lf.write("\n" + fld_msg + "Date/Time: %s\n" % (datetime.now().strftime("[%m-%d-%y] @ [%H:%M:%S]")))
+                ip_blacklist.append(attacker_ip)
+                attacker.close()
+            else:
+                int_msg = "-"*6 + "Intrusion Detected" + "-"*6 + "\a\n" + "Client: %s:%s\n" % (attacker_ip, attacker_port)
+                print(int_msg + "Date/Time: %s\n" % (datetime.now().strftime("[%m-%d-%y] @ [%H:%M:%S]")))
+                lf.write("\n" + int_msg + "Date/Time: %s\n" % (datetime.now().strftime("[%m-%d-%y] @ [%H:%M:%S]")))
+                attacker.send(msg)
+                ip_list.append(attacker_ip)
+                attacker.close()
 
 # ______ Main ______
+clear()
+print(banner)
 if (os.path.exists("config")):
     try:
         start_pot(str(read_config()[0]).replace('\n',''), int(read_config()[1]), True)
@@ -166,7 +194,6 @@ if (os.path.exists("config")):
         exit(er + "Broken config! Exiting and removing...")
 else:
     #print(datetime.now().strftime('%H:%M'))
-    clear()
     mode = input(sp + "Select Mode (1 = Single-Use, 2 = Config Builder) >> ")
 
     if (mode == "1"):

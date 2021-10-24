@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 
 import socket
-import re
+import re, threading
 import os, signal
 from datetime import datetime
 from sys import exit
@@ -40,8 +40,6 @@ sunnypot = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 # _______ Occurence Handling ________
 
 def signal_handler(signal, frame):
-    # if (os.path.getsize(log_name) == 0):
-    #     os.remove(log_name)
     print("\033]2;\007")
     exit("\n" + sp + "Closing socket and exiting...")
 
@@ -50,11 +48,11 @@ signal.signal(signal.SIGINT, signal_handler)
 # _______ Functions _________
 
 def clear():
-    print('\033[2J\033[1;1H')
-
-def create_file(path):
-    with open(path, "w") as file:
-        pass
+    # print('\033[2J\033[1;1H')
+    if os.name == 'nt':
+        os.system('cls')
+    else:
+        os.system('clear')
 
 def remove_conf(is_conf):
     if(is_conf):
@@ -92,8 +90,13 @@ def get_host_port(is_conf):
     check_port(port, is_conf)
     return int(port)
 
-# def format_header(header):
-#     pass
+def format_header(header):
+    header = header.replace('b\'','')
+    header = header.replace('\\n','\t\n')
+    header = header.replace('\\r','\t')
+    if header[-1] == '\'':
+        header = header[:-1]
+    return header
 
 def build_config():
     with open("config", "w") as config:
@@ -125,7 +128,7 @@ def detection(ip):  # Detects DoS or Brute force attacks
 
 def log_start(host,ip):
     start_msg = """
-    Details:
+    \rDetails:
     \tServer: %s:%i
     \tDate: %s
     \tTime: %s
@@ -145,7 +148,7 @@ def start_pot(ip, port, is_conf):
             exit(er + "Cannot assign specific address. Exiting...")
 
     print("\033]2;[Sunny Pot] on %s:%i\007" % (ip,port));
-    sunnypot.listen(3)
+    sunnypot.listen(5)
 
     if os.path.exists("logs") != True: os.mkdir("logs")
 
@@ -165,27 +168,61 @@ def start_pot(ip, port, is_conf):
             attacker, (attacker_ip, attacker_port) = sunnypot.accept()
 
             if attacker_ip in ip_blacklist:
-                bl_msg = "Blacklisted IP (%s) attempted to connect" % attacker_ip + "\n"
-                lf.write("\n" + bl_msg + "Date/Time: %s\n" % (datetime.now().strftime("[%m-%d-%y] @ [%H:%M:%S]")))
-                sleep(3)
+                bl_msg = "-"*6 + "Blacklisted IP (%s) attempted to connect" % attacker_ip + "-"*6 + "\n"
+                lf.write("\n" + bl_msg + "Date/Time: %s\n" % (datetime.now().strftime("[%m-%d-%y] @ [%H:%M:%S]")) + "-"*59 + "\n")
+                sleep(60)
                 attacker.close()
             elif detection(attacker_ip) > 10:     # User is up to something fishy
                 fld_msg = "-"*6 + "Possible flood from [%s]" % attacker_ip + "-"*6 + "\nNo longer sending data to attacker to mitigate potential DoS\n"
-                print(fld_msg + "Date/Time: %s\n" % (datetime.now().strftime("[%m-%d-%y] @ [%H:%M:%S]")))
-                lf.write("\n" + fld_msg + "Date/Time: %s\n" % (datetime.now().strftime("[%m-%d-%y] @ [%H:%M:%S]")))
+                print(fld_msg + "Date/Time: %s" % (datetime.now().strftime("[%m-%d-%y] @ [%H:%M:%S]")))
+                lf.write("\n" + fld_msg + "Date/Time: %s\n" % (datetime.now().strftime("[%m-%d-%y] @ [%H:%M:%S]")) + "-"*44 + "\n")
+                print("-"*44+"\n")
                 ip_blacklist.append(attacker_ip)
                 attacker.close()
             else:
                 int_msg = "-"*6 + "Intrusion Detected" + "-"*6 + "\a\n" + "Client: %s:%s\n" % (attacker_ip, attacker_port)
-                print(int_msg + "Date/Time: %s\n" % (datetime.now().strftime("[%m-%d-%y] @ [%H:%M:%S]")))
+                print(int_msg + "Date/Time: %s" % (datetime.now().strftime("[%m-%d-%y] @ [%H:%M:%S]")))
                 lf.write("\n" + int_msg + "Date/Time: %s\n" % (datetime.now().strftime("[%m-%d-%y] @ [%H:%M:%S]")))
-                attacker.send(msg)
-                ip_list.append(attacker_ip)
-                attacker.close()
+
+                def send_attacker_msg(message):
+                    attacker.send(message)
+                    attacker.close()
+                    ip_list.append(attacker_ip)
+
+                def recv_attacker_msg(ph):
+                    try:
+                        data = attacker.recv(1024)
+                        got_msg = True
+                    except:
+                        print("Data: Connection returned no data...")
+                        print("-"*30+"\n")
+                        lf.write("-"*30+"\n")
+
+                        got_msg = False
+                    finally:
+                        if (got_msg):
+                            print("Data: Returned data, placed in log...")
+                            print("-"*30+"\n")
+                            lf.write("Header: \n\n%s" % format_header(str(data)))
+                            lf.write("-"*30+"\n")
+
+
+                send = threading.Thread (
+                    target=send_attacker_msg,
+                    args=(msg,)
+                )
+                get = threading.Thread (
+                    target=recv_attacker_msg,
+                    args=(None,)
+                )
+
+                get.start()
+                send.start()
 
 # ______ Main ______
 clear()
 print(banner)
+
 if (os.path.exists("config")):
     try:
         start_pot(str(read_config()[0]).replace('\n',''), int(read_config()[1]), True)

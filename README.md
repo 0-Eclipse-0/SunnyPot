@@ -1,4 +1,4 @@
-# [SunnyPot]
+# [SunnyPot] (Version 2)
 ### A Python HoneyPot
 
 #### How to Use
